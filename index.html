@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extractor de Datos del Usuario</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Extractor de Datos del Usuario</h1>
+        
+        <div class="form-group">
+            <label for="url">URL a extraer:</label>
+            <input type="text" id="url" placeholder="https://ejemplo.com">
+            <button id="extraer">Extraer Datos</button>
+        </div>
+        
+        <div id="resultados">
+            <h3>Resultados de la extracción:</h3>
+            <div id="datos-ip">IP: Esperando...</div>
+            <div id="datos-dispositivo">Dispositivo: Esperando...</div>
+            <div id="datos-ubicacion">Ubicación: Esperando...</div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
