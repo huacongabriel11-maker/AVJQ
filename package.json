@@ -1,11 +1,11 @@
 {
   "name": "extractor-de-datos",
   "version": "1.0.0",
-  "description": "Extractor de datos del usuario",
+  "description": "Detector de usuario al entrar",
   "main": "index.html",
   "scripts": {
     "start": "npx http-server"
   },
-  "author": "Tu Nombre",
+  "author": "",
   "license": "ISC"
 }
